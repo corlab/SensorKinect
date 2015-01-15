@@ -878,6 +878,12 @@ static XnStatus GetModuleDir(XnChar* strBuffer)
 }
 #endif
 
+#if (XN_PLATFORM == XN_PLATFORM_WIN32) && (_M_X64)
+	#define XN_OPEN_NI_INSTALL_PATH_ENV "OPEN_NI_INSTALL_PATH64"
+#else
+	#define XN_OPEN_NI_INSTALL_PATH_ENV "OPEN_NI_INSTALL_PATH"
+#endif
+
 XnStatus XnSensorClient::StartServerProcess()
 {
 	XnStatus nRetVal = XN_STATUS_OK;
@@ -887,7 +893,23 @@ XnStatus XnSensorClient::StartServerProcess()
 #if (XN_PLATFORM == XN_PLATFORM_WIN32)
 	nRetVal = GetModuleDir(strServerDir);
 #elif (XN_PLATFORM == XN_PLATFORM_LINUX_X86 || XN_PLATFORM == XN_PLATFORM_LINUX_ARM || XN_PLATFORM == XN_PLATFORM_MACOSX)
-	sprintf(strServerDir, "/usr/bin");
+	XnChar openniInstallDir[XN_FILE_MAX_PATH];
+	nRetVal = xnOSGetEnvironmentVariable(XN_OPEN_NI_INSTALL_PATH_ENV, openniInstallDir, XN_FILE_MAX_PATH);
+	if (nRetVal == XN_STATUS_OS_ENV_VAR_NOT_FOUND)
+	{
+		#if (XN_PLATFORM == XN_PLATFORM_WIN32)
+			// we don't allow environment variable not to be defined on Windows.
+			return nRetVal;
+		#else
+			// use root FS
+			openniInstallDir[0] = '\0';
+		#endif
+	}
+	else
+	{
+		XN_IS_STATUS_OK(nRetVal);
+	}
+	sprintf(strServerDir, "%s/usr/bin", openniInstallDir);
 #endif
 
 	XnChar strProcessName[XN_FILE_MAX_PATH];
